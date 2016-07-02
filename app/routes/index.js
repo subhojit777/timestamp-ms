@@ -1,57 +1,42 @@
 'use strict';
 
 var path = process.cwd();
-var ClickHandler = require(path + '/app/controllers/clickHandler.server.js');
+// http://stackoverflow.com/a/1643468/1233922
+var monthNames = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
 
-module.exports = function (app, passport) {
+module.exports = function (app) {
 
-	function isLoggedIn (req, res, next) {
-		if (req.isAuthenticated()) {
-			return next();
-		} else {
-			res.redirect('/login');
-		}
-	}
+  app.route('/').get(function(req, res) {
+    res.sendFile(path + '/public/index.html');
+  });
 
-	var clickHandler = new ClickHandler();
+  app.route('/:date').get(function(req, res) {
+    if (isNaN(req.params.date)) {
+      var dateParts = req.params.date.split(' ');
 
-	app.route('/')
-		.get(isLoggedIn, function (req, res) {
-			res.sendFile(path + '/public/index.html');
-		});
+      // Handle favicon.ico request.
+      // https://gist.github.com/kentbrew/763822
+      if (dateParts[0] === 'favicon.ico') {
+        res.set('Content-Type', 'image/x-icon');
+        res.status(200).end();
+      }
+      else {
+        var date = new Date(Date.UTC(dateParts[2], monthNames.indexOf(dateParts[0]), dateParts[1].replace(',', '')));
+        res.status(200).json({
+          'unix': (date.getTime() / 1000).toString(),
+          'natural': req.params.date
+        });
+      }
+    }
+    else {
+      var date = new Date(req.params.date * 1000);
+      res.status(200).json({
+        'unix': req.params.date,
+        'natural': monthNames[date.getMonth()] + ' ' + date.getDate() + ', ' + date.getFullYear()
+      });
+    }
+  });
 
-	app.route('/login')
-		.get(function (req, res) {
-			res.sendFile(path + '/public/login.html');
-		});
-
-	app.route('/logout')
-		.get(function (req, res) {
-			req.logout();
-			res.redirect('/login');
-		});
-
-	app.route('/profile')
-		.get(isLoggedIn, function (req, res) {
-			res.sendFile(path + '/public/profile.html');
-		});
-
-	app.route('/api/:id')
-		.get(isLoggedIn, function (req, res) {
-			res.json(req.user.github);
-		});
-
-	app.route('/auth/github')
-		.get(passport.authenticate('github'));
-
-	app.route('/auth/github/callback')
-		.get(passport.authenticate('github', {
-			successRedirect: '/',
-			failureRedirect: '/login'
-		}));
-
-	app.route('/api/:id/clicks')
-		.get(isLoggedIn, clickHandler.getClicks)
-		.post(isLoggedIn, clickHandler.addClick)
-		.delete(isLoggedIn, clickHandler.resetClicks);
 };
