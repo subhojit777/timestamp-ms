@@ -23,11 +23,16 @@ module.exports = function (app) {
         res.status(200).end();
       }
       else {
-        var date = new Date(Date.UTC(dateParts[2], monthNames.indexOf(dateParts[0]), dateParts[1].replace(',', '')));
-        res.status(200).json({
-          'unix': (date.getTime() / 1000).toString(),
-          'natural': req.params.date
-        });
+        try {
+          var date = new Date(Date.UTC(dateParts[2], monthNames.indexOf(dateParts[0]), dateParts[1].replace(',', '')));
+          res.status(200).json({
+            'unix': (date.getTime() / 1000).toString(),
+            'natural': req.params.date
+          });
+        }
+        catch (e) {
+          res.status(200).send('Incorrect date format');
+        }
       }
     }
     else {
